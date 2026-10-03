@@ -1,0 +1,423 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>CasaMes — Alquileres de 1 mes en España</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f7f5f1;
+            color: #222;
+        }
+
+        header {
+            background: white;
+            border-bottom: 1px solid #ddd;
+            padding: 18px 6%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 25px;
+            font-weight: bold;
+        }
+
+        nav a {
+            margin-left: 25px;
+            text-decoration: none;
+            color: #333;
+        }
+
+        .hero {
+            background: #e8dfd2;
+            padding: 70px 6%;
+            text-align: center;
+        }
+
+        .hero h1 {
+            font-size: 42px;
+            margin-bottom: 15px;
+        }
+
+        .hero p {
+            font-size: 19px;
+            margin-bottom: 35px;
+        }
+
+        .search-box {
+            background: white;
+            max-width: 950px;
+            margin: auto;
+            padding: 20px;
+            border-radius: 10px;
+            display: grid;
+            grid-template-columns: 1.5fr 1fr 1fr 1fr auto;
+            gap: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        }
+
+        input, select {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 15px;
+        }
+
+        button {
+            background: #1f5c45;
+            color: white;
+            border: none;
+            padding: 14px 22px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+        }
+
+        button:hover {
+            background: #174936;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 0 25px;
+        }
+
+        .section-title {
+            margin-bottom: 25px;
+        }
+
+        .properties {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 25px;
+        }
+
+        .property {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #ddd;
+        }
+
+        .property img {
+            width: 100%;
+            height: 210px;
+            object-fit: cover;
+        }
+
+        .property-content {
+            padding: 20px;
+        }
+
+        .property h3 {
+            margin-top: 0;
+        }
+
+        .location {
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .price {
+            font-size: 22px;
+            font-weight: bold;
+            margin: 15px 0;
+        }
+
+        .price span {
+            font-size: 14px;
+            font-weight: normal;
+            color: #666;
+        }
+
+        .features {
+            color: #555;
+            font-size: 14px;
+            margin-bottom: 18px;
+        }
+
+        .how {
+            background: white;
+            padding: 45px 6%;
+            text-align: center;
+        }
+
+        .steps {
+            display: flex;
+            justify-content: center;
+            gap: 50px;
+            margin-top: 30px;
+        }
+
+        .step {
+            max-width: 230px;
+        }
+
+        .step-number {
+            font-size: 30px;
+            font-weight: bold;
+            color: #1f5c45;
+        }
+
+        footer {
+            background: #222;
+            color: white;
+            padding: 35px 6%;
+            margin-top: 50px;
+        }
+
+        @media (max-width: 850px) {
+            .search-box {
+                grid-template-columns: 1fr;
+            }
+
+            .properties {
+                grid-template-columns: 1fr;
+            }
+
+            .steps {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            nav {
+                display: none;
+            }
+
+            .hero h1 {
+                font-size: 32px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <div class="logo">CasaMes</div>
+
+    <nav>
+        <a href="#">Inicio</a>
+        <a href="#">Casas</a>
+        <a href="#">Destinos</a>
+        <a href="#">Cómo funciona</a>
+        <a href="#">Iniciar sesión</a>
+    </nav>
+</header>
+
+
+<section class="hero">
+
+    <h1>Alquila una casa en España por un mes</h1>
+
+    <p>
+        Casas seleccionadas para estancias de 30 días o más.
+        Sin complicaciones.
+    </p>
+
+    <div class="search-box">
+
+        <input
+            type="text"
+            placeholder="¿Dónde quieres vivir?"
+        >
+
+        <input
+            type="date"
+            title="Fecha de entrada"
+        >
+
+        <input
+            type="date"
+            title="Fecha de salida"
+        >
+
+        <select>
+            <option>2 huéspedes</option>
+            <option>1 huésped</option>
+            <option>3 huéspedes</option>
+            <option>4 huéspedes</option>
+            <option>5+ huéspedes</option>
+        </select>
+
+        <button>Buscar</button>
+
+    </div>
+
+</section>
+
+
+<main class="container">
+
+    <h2 class="section-title">
+        Casas para alquilar por un mes
+    </h2>
+
+    <div class="properties">
+
+        <!-- CASA 1 -->
+
+        <article class="property">
+
+            <img
+                src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=900&q=80"
+                alt="Casa moderna en Málaga"
+            >
+
+            <div class="property-content">
+
+                <h3>Casa moderna cerca del mar</h3>
+
+                <div class="location">
+                    Málaga, Andalucía
+                </div>
+
+                <div class="features">
+                    2 dormitorios · 2 baños · Wi-Fi · Terraza
+                </div>
+
+                <div class="price">
+                    1.850 € <span>/ mes</span>
+                </div>
+
+                <button>Ver casa</button>
+
+            </div>
+
+        </article>
+
+
+        <!-- CASA 2 -->
+
+        <article class="property">
+
+            <img
+                src="https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=900&q=80"
+                alt="Casa en Valencia"
+            >
+
+            <div class="property-content">
+
+                <h3>Casa luminosa en Valencia</h3>
+
+                <div class="location">
+                    Valencia, Comunidad Valenciana
+                </div>
+
+                <div class="features">
+                    3 dormitorios · 2 baños · Cocina · Balcón
+                </div>
+
+                <div class="price">
+                    1.600 € <span>/ mes</span>
+                </div>
+
+                <button>Ver casa</button>
+
+            </div>
+
+        </article>
+
+
+        <!-- CASA 3 -->
+
+        <article class="property">
+
+            <img
+                src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=900&q=80"
+                alt="Casa en Mallorca"
+            >
+
+            <div class="property-content">
+
+                <h3>Villa tranquila en Mallorca</h3>
+
+                <div class="location">
+                    Mallorca, Islas Baleares
+                </div>
+
+                <div class="features">
+                    2 dormitorios · Piscina · Jardín · Wi-Fi
+                </div>
+
+                <div class="price">
+                    2.400 € <span>/ mes</span>
+                </div>
+
+                <button>Ver casa</button>
+
+            </div>
+
+        </article>
+
+    </div>
+
+</main>
+
+
+<section class="how">
+
+    <h2>Alquilar por un mes es fácil</h2>
+
+    <div class="steps">
+
+        <div class="step">
+            <div class="step-number">1</div>
+            <h3>Busca</h3>
+            <p>
+                Encuentra una casa en tu destino favorito.
+            </p>
+        </div>
+
+        <div class="step">
+            <div class="step-number">2</div>
+            <h3>Reserva</h3>
+            <p>
+                Elige tus fechas y reserva tu estancia de un mes.
+            </p>
+        </div>
+
+        <div class="step">
+            <div class="step-number">3</div>
+            <h3>Disfruta</h3>
+            <p>
+                Llega, instala tus cosas y disfruta de España.
+            </p>
+        </div>
+
+    </div>
+
+</section>
+
+
+<footer>
+
+    <h3>CasaMes</h3>
+
+    <p>
+        Alquileres de casas en España para estancias de un mes o más.
+    </p>
+
+    <p>
+        © 2026 CasaMes · Contacto · Términos · Privacidad
+    </p>
+
+</footer>
+
+</body>
+</html>
+```
+
