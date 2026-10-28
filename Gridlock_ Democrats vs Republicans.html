@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gridlock: Democrats vs Republicans</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#e9edf5;--fg:#10131c;--mut:#586076;--line:#c5cddd;--d:#2f6fe8;--r:#e23a3d;--gold:#f5c542}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#080b14;--fg:#eef1f8;--mut:#98a2bb;--line:#26304a;--d:#5b93ff;--r:#ff5558}}
+:root[data-theme="dark"]{--bg:#080b14;--fg:#eef1f8;--mut:#98a2bb;--line:#26304a;--d:#5b93ff;--r:#ff5558}
+*{box-sizing:border-box}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{height:100%;margin:0;padding:12px;overflow:auto;display:flex;justify-content:center;align-items:center;background:var(--bg);color:var(--fg);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#app{width:100%;max-width:920px}
+.top{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;margin-bottom:10px}
+.team{display:flex;flex-direction:column;gap:6px}
+.team.r{align-items:flex-end}
+.name{font:700 15px ui-serif,Georgia,serif}
+.d .name{color:var(--d)}.r .name{color:var(--r)}
+.pips{display:flex;gap:4px}.r .pips{flex-direction:row-reverse}
+.pip{display:block;width:clamp(12px,3.4vw,24px);height:8px;border-radius:2px;background:var(--line);transition:background .2s}
+.d .pip.on{background:var(--d);box-shadow:0 0 8px var(--d)}
+.r .pip.on{background:var(--r);box-shadow:0 0 8px var(--r)}
+.mid{text-align:center}
+.mid small{display:block;color:var(--mut);font-size:12px}
+.mid b{font:700 clamp(24px,6vw,34px) ui-serif,Georgia,serif;font-variant-numeric:tabular-nums}
+.stage{position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--line);box-shadow:0 10px 40px #0005;background:#05070d}
+canvas{display:block;width:100%;height:auto;touch-action:none}
+.ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:14px;text-align:center;background:rgba(5,7,13,.86);color:#eef1f8;overflow:auto}
+.ov[hidden],.row[hidden]{display:none}
+.ov h2{margin:0;font:700 clamp(26px,6vw,46px) ui-serif,Georgia,serif;letter-spacing:.02em}
+.ov p{margin:0;color:#b4bdd3;max-width:46ch;font-size:14px}
+.row{display:flex;flex-direction:column;align-items:center;gap:5px}
+.row label{font-size:12px;color:#98a2bb}
+.grp{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.ov button{font:600 14px inherit;font-family:inherit;cursor:pointer;border:1px solid #3a4560;background:#161d30;color:#eef1f8;padding:9px 15px;border-radius:10px}
+.ov button.on{border-color:var(--gold);box-shadow:0 0 0 2px #f5c54266}
+.ov button[data-v=D].on{background:#2f6fe8}
+.ov button[data-v=R].on{background:#e23a3d}
+.ov .go{background:var(--gold);color:#111;border:0;padding:12px 28px;font-size:18px;font-weight:800}
+.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;color:var(--mut);font-size:12px}
+.sm{font:inherit;cursor:pointer;background:transparent;color:var(--fg);border:1px solid var(--line);padding:6px 12px;border-radius:8px}
+button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="top">
+    <div class="team d"><span class="name">Democrats</span><div class="pips" id="pD"></div></div>
+    <div class="mid"><small>Gridlock · first to 7</small><b id="sc">0 – 0</b></div>
+    <div class="team r"><span class="name">Republicans</span><div class="pips" id="pR"></div></div>
+  </div>
+  <div class="stage">
+    <canvas id="c" width="900" height="500"></canvas>
+    <div class="ov" id="menu">
+      <h2>Gridlock</h2>
+      <p>Democrats on the left, Republicans on the right. Don’t let the bill get past your paddle. First to 7 votes takes the floor.</p>
+      <div class="row"><label>Players</label><div class="grp" data-k="mode"><button data-v="1" class="on">1 Player</button><button data-v="2">2 Players</button></div></div>
+      <div class="row" id="sideRow"><label>Your party</label><div class="grp" data-k="side"><button data-v="D" class="on">Democrat</button><button data-v="R">Republican</button></div></div>
+      <div class="row"><label>Difficulty</label><div class="grp" data-k="diff"><button data-v="0">Freshman</button><button data-v="1" class="on">Senator</button><button data-v="2">Majority Leader</button></div></div>
+      <button class="go" id="go">Call the vote</button>
+      <p id="rec"></p>
+    </div>
+    <div class="ov" id="pause" hidden>
+      <h2>Recess</h2>
+      <p>The chamber is in recess.</p>
+      <div class="grp"><button class="go" id="res">Resume</button><button id="quit">Menu</button></div>
+    </div>
+    <div class="ov" id="end" hidden>
+      <h2 id="et"></h2>
+      <p id="es"></p>
+      <p id="est"></p>
+      <p id="rec2"></p>
+      <div class="grp"><button class="go" id="again">Rematch</button><button id="tomenu">Menu</button></div>
+    </div>
+  </div>
+  <div class="bar"><button class="sm" id="pz">Pause</button><button class="sm" id="mu">Sound: on</button><span id="hint"></span></div>
+</div>
+<script>
+const W=900,H=500,WIN=7,$=s=>document.querySelector(s),cv=$('#c'),g=cv.getContext('2d');
+const RM=matchMedia('(prefers-reduced-motion:reduce)').matches;
+const cfg={side:'D',mode:1,diff:1};
+const MAXS=[11,13.5,16],BASE=[6,7.4,8.8],ERR=[110,70,24],AIS=[4.6,6.4,8.6];
+let rec={D:0,R:0};
+try{const s=JSON.parse(localStorage.getItem('gl_rec'));if(s&&typeof s=='object')rec={D:+s.D||0,R:+s.R||0}}catch(e){}
+const save=()=>{try{localStorage.setItem('gl_rec',JSON.stringify(rec))}catch(e){}};
+const recTxt=()=>'Floor wins: Democrats '+rec.D+' · Republicans '+rec.R;
+['D','R'].forEach(k=>{const p=$('#p'+k);for(let i=0;i<WIN;i++)p.appendChild(document.createElement('i')).className='pip'});
+
+/* audio */
+let ac,mute=false;
+const tone=(f,d=.08,t='square',v=.05,s=0)=>{if(mute||!ac)return;const o=ac.createOscillator(),a=ac.createGain(),n=ac.currentTime+s;o.type=t;o.frequency.setValueAtTime(f,n);a.gain.setValueAtTime(v,n);a.gain.exponentialRampToValueAtTime(.0001,n+d);o.connect(a);a.connect(ac.destination);o.start(n);o.stop(n+d)};
+
+/* state */
+const mk=(x,k)=>({x,y:H/2-48,w:16,h:96,k,s:0,ty:null,f:0,ai:false,err:0});
+let L=null,R=null,ball=null,parts=[],trail=[],st='menu',prev='play',tm=0,rally=0,best=0,shake=0,banner='',bt=0,t0=0,serveDir=1;
+const K={};
+
+const ov=(id,show)=>{$('#'+id).hidden=!show};
+function upd(){
+  ['D','R'].forEach(k=>{const s=((k=='D'?L:R)||{}).s||0;document.querySelectorAll('#p'+k+' .pip').forEach((e,i)=>e.classList.toggle('on',i<s))});
+  $('#sc').textContent=((L||{}).s||0)+' – '+((R||{}).s||0);
+}
+function hint(){
+  $('#hint').textContent=cfg.mode==1?'Move with ↑ ↓ or W S, or drag. P pauses, M mutes.':'Democrats: W / S · Republicans: ↑ / ↓ · on touch, use each half of the screen. P pauses.';
+}
+function serve(first){
+  st='serve';tm=first?3:1.8;rally=0;
+  const a=(Math.random()-.5)*.7,sp=BASE[cfg.diff];
+  ball={x:W/2,y:H/2,sp,vx:serveDir*sp*Math.cos(a),vy:sp*Math.sin(a),r:9,rot:0};trail=[];
+}
+function start(){
+  L=mk(28,'D');R=mk(W-44,'R');
+  if(cfg.mode==1)(cfg.side=='D'?R:L).ai=true;
+  best=0;parts=[];serveDir=Math.random()<.5?1:-1;t0=performance.now();
+  ov('menu',0);ov('end',0);ov('pause',0);upd();hint();serve(true);
+  if(!ac){try{ac=new(window.AudioContext||window.webkitAudioContext)()}catch(e){}}
+  if(ac&&ac.state=='suspended')ac.resume();
+}
+function toMenu(){L=R=ball=null;parts=[];st='menu';upd();ov('pause',0);ov('end',0);ov('menu',1);$('#rec').textContent=recTxt()}
+function pause(){
+  if(st=='play'||st=='serve'){prev=st;st='pause';ov('pause',1)}
+  else if(st=='pause'){st=prev;ov('pause',0)}
+}
+const burst=(x,y,n,k)=>{const c=k=='D'?'#6ea0ff':'#ff6b6b';for(let i=0;i<n;i++){const a=Math.random()*6.283,s=1+Math.random()*(n>20?7:4);parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,l:1,c:Math.random()<.3?'#f5c542':c})}};
+
+function hit(p,dir){
+  const rel=Math.max(-1,Math.min(1,(ball.y-(p.y+p.h/2))/(p.h/2)));
+  ball.sp=Math.min(ball.sp*1.045+.1,MAXS[cfg.diff]);
+  const a=rel*.95;
+  ball.vx=dir*ball.sp*Math.cos(a);ball.vy=ball.sp*Math.sin(a);
+  ball.x=dir>0?p.x+p.w+ball.r:p.x-ball.r;
+  rally++;if(rally>best)best=rally;
+  p.f=1;p.err=(Math.random()-.5)*ERR[cfg.diff];
+  shake=RM?0:Math.min(6,2+rally*.15);burst(ball.x,ball.y,8,p.k);
+  tone(380+Math.min(rally,20)*22,.07,'square',.05);
+  if(rally%8==0){banner='GRIDLOCK ×'+rally;bt=1.4;tone(880,.15,'sawtooth',.05)}
+}
+function point(p){
+  p.s++;burst(ball.x<W/2?0:W,ball.y,40,p.k);shake=RM?0:12;
+  tone(p===L?523:392,.25,'sawtooth',.06);tone(p===L?659:294,.3,'sawtooth',.05,.12);
+  serveDir=p===L?-1:1;upd();
+  if(p.s>=WIN)return over(p);
+  serve(false);
+}
+function over(p){
+  st='end';rec[p.k]++;save();
+  const dem=p.k=='D',w=dem?'Democrats':'Republicans',l=dem?'Republicans':'Democrats';
+  $('#et').textContent=w+' win the floor vote';
+  $('#et').style.color=dem?'#6ea0ff':'#ff7373';
+  $('#es').textContent=l+' take the blame for the gridlock. Until the next session.';
+  $('#est').textContent='Final '+L.s+'–'+R.s+' · Longest rally '+best+' · '+Math.round((performance.now()-t0)/1000)+'s on the floor';
+  $('#rec2').textContent=recTxt();
+  ov('end',1);
+  [523,659,784,1047].forEach((f,i)=>tone(f,.25,'triangle',.06,i*.14));
+}
+
+function ctl(p,dt){
+  if(p.ai){
+    const c=p.y+p.h/2,towards=(ball.vx>0)==(p.x>W/2),tgt=towards&&st=='play'?ball.y+p.err:H/2,d=tgt-c;
+    if(Math.abs(d)>6)p.y+=Math.sign(d)*Math.min(AIS[cfg.diff]*dt,Math.abs(d));
+  }else{
+    const kb=cfg.mode==1?['w','arrowup','s','arrowdown']:p.k=='D'?['w','w','s','s']:['arrowup','arrowup','arrowdown','arrowdown'];
+    const dy=((K[kb[2]]||K[kb[3]])?1:0)-((K[kb[0]]||K[kb[1]])?1:0);
+    if(dy){p.y+=dy*9*dt;p.ty=null}
+    else if(p.ty!=null){const d=p.ty-p.h/2-p.y,m=16*dt;p.y+=Math.max(-m,Math.min(m,d*.4*dt))}
+  }
+  p.y=Math.max(6,Math.min(H-p.h-6,p.y));
+}
+function step(dt){
+  [L,R].forEach(p=>{ctl(p,dt);p.f=Math.max(0,p.f-dt*.08)});
+  if(st=='serve'){tm-=dt/60;if(tm<=0){st='play';tone(660,.1,'triangle',.06)}return}
+  const n=Math.ceil(ball.sp*dt/5),sx=dt/n;
+  for(let i=0;i<n;i++){
+    ball.x+=ball.vx*sx;ball.y+=ball.vy*sx;
+    if(ball.y<ball.r){ball.y=ball.r;ball.vy=Math.abs(ball.vy);tone(220,.04,'sine',.04)}
+    if(ball.y>H-ball.r){ball.y=H-ball.r;ball.vy=-Math.abs(ball.vy);tone(220,.04,'sine',.04)}
+    for(const p of [L,R]){
+      const dir=p===L?1:-1,inFront=dir>0?ball.x>p.x:ball.x<p.x+p.w;
+      if(ball.vx*dir<0&&inFront&&ball.x+ball.r>p.x&&ball.x-ball.r<p.x+p.w&&ball.y+ball.r>p.y&&ball.y-ball.r<p.y+p.h)hit(p,dir);
+    }
+    if(ball.x<-30)return point(R);
+    if(ball.x>W+30)return point(L);
+  }
+  ball.rot+=.15*dt;
+  trail.push([ball.x,ball.y]);if(trail.length>14)trail.shift();
+}
+
+/* drawing */
+function rr(x,y,w,h,r){g.beginPath();if(g.roundRect)g.roundRect(x,y,w,h,r);else g.rect(x,y,w,h)}
+function draw(){
+  g.save();
+  if(shake>.2)g.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);
+  const bg=g.createLinearGradient(0,0,W,0);bg.addColorStop(0,'#10285c');bg.addColorStop(.5,'#070a14');bg.addColorStop(1,'#561319');
+  g.fillStyle=bg;g.fillRect(-20,-20,W+40,H+40);
+  /* capitol silhouette */
+  g.fillStyle='rgba(255,255,255,.05)';
+  g.beginPath();g.moveTo(W/2-190,H);g.lineTo(W/2-190,H-70);g.lineTo(W/2-70,H-70);g.lineTo(W/2-70,H-100);
+  g.arc(W/2,H-100,70,Math.PI,0);g.lineTo(W/2+70,H-70);g.lineTo(W/2+190,H-70);g.lineTo(W/2+190,H);g.fill();
+  g.fillRect(W/2-7,H-196,14,26);
+  for(let i=0;i<9;i++)g.fillRect(W/2-172+i*43,H-66,8,66);
+  /* gridlock line */
+  g.globalAlpha=.55;
+  for(let y=0;y<H;y+=28){g.fillStyle=(y/28)%2?'#ef4444':'#3b7bff';g.fillRect(W/2-2,y+4,4,18)}
+  g.globalAlpha=1;
+  /* trail */
+  trail.forEach((q,i)=>{const f=i/trail.length;g.globalAlpha=f*.35;g.fillStyle='#f5c542';g.beginPath();g.arc(q[0],q[1],ball.r*f,0,7);g.fill()});
+  g.globalAlpha=1;
+  /* paddles */
+  [L,R].forEach(p=>{
+    if(!p)return;
+    const c=p.k=='D'?'#3b7bff':'#ef4444';
+    g.shadowColor=c;g.shadowBlur=14+p.f*26;g.fillStyle=c;rr(p.x,p.y,p.w,p.h,8);g.fill();
+    g.shadowBlur=0;
+    if(p.f>0){g.fillStyle='rgba(255,255,255,'+p.f*.6+')';rr(p.x,p.y,p.w,p.h,8);g.fill()}
+    g.fillStyle='#fff';g.font='bold 13px system-ui,sans-serif';g.textAlign='center';g.fillText(p.k,p.x+p.w/2,p.y+p.h/2+5);
+    if(cfg.mode==1&&!p.ai){g.fillStyle='rgba(255,255,255,.6)';g.font='600 11px system-ui,sans-serif';g.fillText('YOU',p.x+p.w/2,p.y-8)}
+  });
+  /* ball: a gold star */
+  if(ball){
+    g.save();g.translate(ball.x,ball.y);g.rotate(ball.rot);g.shadowColor='#f5c542';g.shadowBlur=18;g.fillStyle='#fff3c4';
+    g.beginPath();for(let i=0;i<10;i++){const r=i%2?ball.r*.45:ball.r*1.25,a=i*Math.PI/5-Math.PI/2;g.lineTo(Math.cos(a)*r,Math.sin(a)*r)}
+    g.closePath();g.fill();g.restore();
+  }
+  parts.forEach(q=>{g.globalAlpha=Math.max(0,q.l);g.fillStyle=q.c;g.fillRect(q.x,q.y,3,3)});
+  g.globalAlpha=1;
+  /* hud */
+  g.textAlign='center';
+  if(st=='serve'){g.fillStyle='rgba(255,255,255,.85)';g.font='bold 72px ui-serif,Georgia,serif';g.fillText(Math.ceil(tm),W/2,H/2+90)}
+  if(rally>2&&st=='play'){g.fillStyle='rgba(255,255,255,.55)';g.font='600 14px system-ui,sans-serif';g.fillText('Rally '+rally,W/2,24)}
+  if(bt>0){g.globalAlpha=Math.min(1,bt);g.fillStyle='#f5c542';g.font='bold 34px ui-serif,Georgia,serif';g.fillText(banner,W/2,H/2-70);g.globalAlpha=1}
+  g.restore();
+}
+
+let last=0;
+function loop(now){
+  const dt=Math.min(3,(now-last)/16.667||1);last=now;
+  if(st=='play'||st=='serve')step(dt);
+  parts.forEach(q=>{q.x+=q.vx*dt;q.y+=q.vy*dt;q.vy+=.08*dt;q.l-=.025*dt});
+  parts=parts.filter(q=>q.l>0);
+  shake*=Math.pow(.88,dt);bt-=dt/60;
+  draw();requestAnimationFrame(loop);
+}
+
+/* input */
+addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase();K[k]=1;
+  const live=st=='play'||st=='serve'||st=='pause';
+  if(['arrowup','arrowdown'].includes(k)&&live)e.preventDefault();
+  if(live&&(k=='p'||k=='escape'||k==' ')){e.preventDefault();pause()}
+  if(k=='m')toggleMute();
+});
+addEventListener('keyup',e=>{K[e.key.toLowerCase()]=0});
+addEventListener('blur',()=>{for(const k in K)K[k]=0;if(st=='play'||st=='serve')pause()});
+function ptr(e){
+  if(!L||st=='menu'||st=='end')return;
+  const r=cv.getBoundingClientRect(),px=(e.clientX-r.left)/r.width*W,py=(e.clientY-r.top)/r.height*H;
+  const p=cfg.mode==1?(L.ai?R:L):(px<W/2?L:R);
+  p.ty=py;
+}
+cv.addEventListener('pointermove',ptr);
+cv.addEventListener('pointerdown',ptr);
+function toggleMute(){mute=!mute;$('#mu').textContent='Sound: '+(mute?'off':'on')}
+document.querySelectorAll('.grp[data-k]').forEach(gp=>gp.addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  const v=b.dataset.v;cfg[gp.dataset.k]=isNaN(v)?v:+v;
+  gp.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+  $('#sideRow').hidden=cfg.mode==2;hint();b.blur();
+}));
+$('#go').onclick=start;$('#again').onclick=start;
+$('#res').onclick=pause;$('#pz').onclick=function(){pause();this.blur()};
+$('#quit').onclick=toMenu;$('#tomenu').onclick=toMenu;
+$('#mu').onclick=function(){toggleMute();this.blur()};
+$('#rec').textContent=recTxt();hint();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
