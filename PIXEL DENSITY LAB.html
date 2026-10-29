@@ -1,0 +1,145 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PIXEL DENSITY LAB</title>
+<style>
+:root{--bg:#f3f0ea;--pn:#faf8f4;--ink:#1d1f21;--mut:#6b6a66;--ln:#d5d0c5;--ac:#2f5d62;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17181a;--pn:#1e2022;--ink:#e8e4dc;--mut:#9a978f;--ln:#34373a;--ac:#8fbcb8}}
+:root[data-theme="dark"]{--bg:#17181a;--pn:#1e2022;--ink:#e8e4dc;--mut:#9a978f;--ln:#34373a;--ac:#8fbcb8}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:12px/1.45 ui-sans-serif,system-ui,"Helvetica Neue",Arial,sans-serif}
+header{padding:12px 16px;border-bottom:1px solid var(--ln);display:flex;gap:16px;align-items:baseline;flex-wrap:wrap}
+h1{font-size:13px;letter-spacing:.22em;margin:0;font-weight:600}header span{color:var(--mut)}
+.app{display:grid;grid-template-columns:270px minmax(0,1fr) 340px;gap:1px;background:var(--ln)}
+.col{background:var(--pn);padding:12px;min-width:0}
+h2{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--mut);margin:14px 0 6px;font-weight:600;border-top:1px solid var(--ln);padding-top:10px}h2:first-child{margin-top:0;border:0;padding:0}
+label{display:flex;justify-content:space-between;margin-top:7px;color:var(--mut)}output{color:var(--ink);font-family:ui-monospace,Menlo,monospace}
+input[type=range]{width:100%;accent-color:var(--ac);margin:2px 0}select,input[type=number],button,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--ln);padding:4px 6px;width:100%;border-radius:2px}
+button{cursor:pointer;text-align:left;margin-top:4px}button.on{border-color:var(--ac);box-shadow:inset 3px 0 0 var(--ac)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}canvas{width:100%;aspect-ratio:1;display:block;image-rendering:pixelated;border:1px solid var(--ln);background:#888}
+figcaption{color:var(--mut);margin:4px 0 0;font-size:11px}figure{margin:0}
+table{width:100%;border-collapse:collapse;font-family:ui-monospace,Menlo,monospace;font-size:11px}td,th{padding:3px 4px;border-bottom:1px solid var(--ln);text-align:right}td:first-child,th:first-child{text-align:left;font-family:inherit}th{color:var(--mut);font-weight:500}
+dl{display:grid;grid-template-columns:1fr auto;gap:2px 8px;margin:0}dt{color:var(--mut)}dd{margin:0;font-family:ui-monospace,Menlo,monospace;text-align:right}
+.note{color:var(--mut);font-size:11px;margin:6px 0}.warn{border-left:3px solid var(--ac);padding:4px 8px;background:var(--bg);margin:8px 0}
+.sw{display:inline-block;width:9px;height:9px;margin-right:4px;vertical-align:-1px}
+textarea{height:130px;font-family:ui-monospace,Menlo,monospace;font-size:10px}
+@media(max-width:980px){.app{grid-template-columns:1fr}}
+</style></head><body>
+<header><h1>PIXEL DENSITY LAB</h1><span>Density Field Photography · browser prototype · a simulation, not a claim about real sensors</span><span id="tm"></span></header>
+<div class="app">
+<div class="col"><h2>Sensor · optics · capture</h2><div id="ctl"></div><h2>Derived sensor model</h2><dl id="rd"></dl><div id="lim" class="warn"></div></div>
+<div class="col">
+<div class="grid2">
+<figure><canvas id="cg" width="256" height="256"></canvas><figcaption>Ideal scene (analytic, linear light). Ground truth for metrics.</figcaption></figure>
+<figure><canvas id="cn" width="256" height="256"></canvas><figcaption>Native capture, frame 0, one sample per photosite (nearest).</figcaption></figure>
+<figure><canvas id="cr" width="256" height="256"></canvas><figcaption>Multi-frame reconstruction. Press and hold to flicker against native.</figcaption></figure>
+<figure><canvas id="cp" width="256" height="256"></canvas><figcaption><i class="sw" style="background:#3c5a6e"></i>measured, 1 sample <i class="sw" style="background:#1f9a7c"></i>measured, ≥2 samples <i class="sw" style="background:#c4bcab"></i>interpolated. No learned or generated pixels exist in this build.</figcaption></figure>
+</div>
+<h2>Experiment record (reproducible: same JSON + seed ⇒ same image)</h2>
+<textarea id="json" readonly></textarea><button id="cpb">Copy experiment JSON</button>
+<h2>Implementation status</h2>
+<p class="note"><b>Runs now:</b> analytic scenes; Airy/defocus blur (Gaussian approximation); photosite model with photon shot noise, read noise, full well ∝ pitch², 12-bit ADC, saturation; sub-pixel frame capture; shift-and-add fusion with box-normalised hole filling; registration-error injection; 2D FFT radial spectrum; PSNR, block SSIM, effective-resolution estimate; measured/interpolated provenance; seeded RNG.<br><b>Planned extensions (not implemented):</b> Python/FastAPI engine, WebGL, Web Workers, RAW and TIFF/EXR I/O, colour-filter arrays and demosaicing, motion rejection, Lanczos/frequency-domain/robust fusion, learned reconstruction (switched off), node pipeline editor, dockable panels, PNG/EXR export, project save.</p>
+</div>
+<div class="col"><h2>Guided · 从普通像素到密度场摄影</h2><div id="steps"></div><p id="sd" class="warn"></p>
+<h2>Measurement (vs ideal scene)</h2><table id="mt"></table>
+<p class="note">PSNR and SSIM reward smoothness and can rank a blurry image above a sharp, noisy one. The effective-resolution figure is the first frequency where fused/ideal radial amplitude drops below 0.5: an approximate MTF50-style probe, unreliable on the bar scene.</p>
+<h2>Radial spectrum (Hann-windowed 2D FFT)</h2><canvas id="sp" width="680" height="380" style="aspect-ratio:680/380;image-rendering:auto"></canvas>
+<p class="note">Cycles per 512 µm patch. Shaded region: beyond the native Nyquist limit, where energy is aliased or was never sampled.</p></div>
+</div>
+<script>
+const $=id=>document.getElementById(id),N=256,PATCH=512,UM=PATCH/N;
+const rng=s=>{let a=s>>>0;return()=>{a=(a+0x6D2B79F5)>>>0;let t=a;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296}};
+const gs=r=>Math.sqrt(-2*Math.log(r()||1e-9))*Math.cos(6.2831853*r());
+const LUT=new Uint8Array(1025);for(let i=0;i<=1024;i++){const v=i/1024;LUT[i]=Math.round(255*(v<=.0031308?12.92*v:1.055*Math.pow(v,1/2.4)-.055))}
+const CT=[{id:'scene',l:'Scene',t:'s',o:['zone|Zone plate','star|Siemens star','lines|Slanted edge + bar groups'],v:'zone'},
+{id:'pitch',l:'Pixel pitch µm',min:4,max:16,step:1,v:8},{id:'fnum',l:'Aperture f/',min:2,max:32,step:.1,v:5.6},{id:'lens',l:'Lens blur σ µm',min:0,max:8,step:.5,v:.5},
+{id:'flux',l:'Exposure e⁻/µm² at white',min:100,max:2500,step:50,v:800},{id:'read',l:'Read noise e⁻ rms',min:0,max:20,step:1,v:3},
+{id:'frames',l:'Frames',t:'s',o:['1|1','4|4 (2×2)','9|9 (3×3)','16|16 (4×4)'],v:'4'},{id:'shift',l:'Micro-shift',t:'s',o:['grid|Regular sub-pixel grid','random|Random in [0,1) px','zero|None (0.00 px)'],v:'grid'},
+{id:'align',l:'Registration error σ px',min:0,max:.6,step:.05,v:0},{id:'eff',l:'Effect: Temporal Residue strength',min:0,max:1,step:.05,v:0},{id:'seed',l:'Random seed',t:'n',v:7}];
+const ct=$('ctl');CT.forEach(c=>{let h=`<label>${c.l}<output id="o_${c.id}"></output></label>`;
+if(c.t==='s')h+=`<select id="${c.id}">${c.o.map(o=>{const[a,b]=o.split('|');return`<option value="${a}">${b}</option>`}).join('')}</select>`;
+else if(c.t==='n')h+=`<input type="number" id="${c.id}">`;else h+=`<input type="range" id="${c.id}" min="${c.min}" max="${c.max}" step="${c.step}">`;
+ct.insertAdjacentHTML('beforeend',h);$(c.id).value=c.v;$(c.id).addEventListener('input',()=>{sync();sch()})});
+function sync(){CT.forEach(c=>{$('o_'+c.id).textContent=c.t?'':$(c.id).value})}
+let tmr;const sch=()=>{clearTimeout(tmr);$('tm').textContent='computing…';tmr=setTimeout(run,50)};
+function scene(k){const g=new Float32Array(N*N),c=N/2;for(let y=0;y<N;y++)for(let x=0;x<N;x++){const dx=x+.5-c,dy=y+.5-c,r2=dx*dx+dy*dy;let v=.5;
+if(k==='zone'){if(r2<126*126)v=.5+.45*Math.cos(.01227*r2)}
+else if(k==='star'){if(r2<126*126)v=.5+.45*Math.tanh(4*Math.sin(28*Math.atan2(dy,dx)))}
+else if(x<c){const u=(x-64)*.996+(y-128)*.087;v=.12+.76/(1+Math.exp(-u*1.6))}
+else{const P=[24,16,12,8,6,4,3][Math.min(6,y/36|0)];v=.5+.45*Math.tanh(3*Math.sin(6.2832*x/P))}
+g[y*N+x]=v*v*(3-2*v)*0+v*v;}return g}
+function blur(A,s){const R=Math.ceil(3*s),k=[];let t=0;for(let i=-R;i<=R;i++){const w=Math.exp(-i*i/(2*s*s));k.push(w);t+=w}const T=new Float32Array(N*N),O=new Float32Array(N*N);
+for(let y=0;y<N;y++)for(let x=0;x<N;x++){let a=0;for(let i=-R;i<=R;i++)a+=A[y*N+Math.min(N-1,Math.max(0,x+i))]*k[i+R];T[y*N+x]=a/t}
+for(let y=0;y<N;y++)for(let x=0;x<N;x++){let a=0;for(let i=-R;i<=R;i++)a+=T[Math.min(N-1,Math.max(0,y+i))*N+x]*k[i+R];O[y*N+x]=a/t}return O}
+function bil(A,W,x,y){x-=.5;y-=.5;let x0=Math.floor(x),y0=Math.floor(y);const fx=x-x0,fy=y-y0,c=i=>i<0?0:i>W-1?W-1:i,x1=c(x0+1),y1=c(y0+1);x0=c(x0);y0=c(y0);
+return(A[y0*W+x0]*(1-fx)+A[y0*W+x1]*fx)*(1-fy)+(A[y1*W+x0]*(1-fx)+A[y1*W+x1]*fx)*fy}
+function capture(B,n,s,ox,oy,P,r){const o=new Float32Array(n*n),eW=P.flux*.6*P.pitch*P.pitch,fw=1100*P.pitch*P.pitch;let sat=0,sm=0;
+for(let j=0;j<n;j++)for(let i=0;i<n;i++){let a=0;for(let v=-1;v<2;v++)for(let u=-1;u<2;u++)a+=bil(B,N,(i+.5+ox)*s+u*s/3,(j+.5+oy)*s+v*s/3);a/=9;
+let e=a*eW;e+=gs(r)*Math.sqrt(Math.max(e,0)+P.read*P.read);if(e>=fw){e=fw;sat++}if(e<0)e=0;e=Math.round(e/fw*4095)/4095*fw;sm+=e;o[j*n+i]=e/eW}
+return{o,sat:sat/(n*n),mean:sm/(n*n)}}
+function fuse(fr,off,n,s,r,al){const S=new Float32Array(N*N),C=new Uint8Array(N*N);
+fr.forEach((f,q)=>{const ex=off[q][0]+(q?al*gs(r):0),ey=off[q][1]+(q?al*gs(r):0);for(let j=0;j<n;j++)for(let i=0;i<n;i++){const cx=Math.floor((i+.5+ex)*s),cy=Math.floor((j+.5+ey)*s);if(cx>=0&&cy>=0&&cx<N&&cy<N&&C[cy*N+cx]<255){S[cy*N+cx]+=f[j*n+i];C[cy*N+cx]++}}});
+const M=N+1,IS=new Float64Array(M*M),IC=new Float64Array(M*M);
+for(let y=0;y<N;y++)for(let x=0;x<N;x++){const k=(y+1)*M+x+1;IS[k]=S[y*N+x]+IS[k-1]+IS[k-M]-IS[k-M-1];IC[k]=C[y*N+x]+IC[k-1]+IC[k-M]-IC[k-M-1]}
+const bx=(I,x0,y0,x1,y1)=>I[y1*M+x1]-I[y0*M+x1]-I[y1*M+x0]+I[y0*M+x0];
+const V=new Float32Array(N*N),pv=new Uint8Array(N*N);
+for(let y=0;y<N;y++)for(let x=0;x<N;x++){const k=y*N+x;if(C[k]){V[k]=S[k]/C[k];pv[k]=C[k]>1?2:1;continue}
+for(let R=1;R<=128;R*=2){const x0=Math.max(0,x-R),y0=Math.max(0,y-R),x1=Math.min(N,x+R+1),y1=Math.min(N,y+R+1),c=bx(IC,x0,y0,x1,y1);if(c>0){V[k]=bx(IS,x0,y0,x1,y1)/c;break}}}
+return{V,pv}}
+function fft1(re,im){const n=re.length;for(let i=1,j=0;i<n;i++){let b=n>>1;for(;j&b;b>>=1)j^=b;j^=b;if(i<j){[re[i],re[j]]=[re[j],re[i]];[im[i],im[j]]=[im[j],im[i]]}}
+for(let L=2;L<=n;L<<=1){const a=-6.283185307/L,wr=Math.cos(a),wi=Math.sin(a),h=L/2;for(let i=0;i<n;i+=L){let cr=1,ci=0;for(let k=0;k<h;k++){const p=i+k,q=p+h,vr=re[q]*cr-im[q]*ci,vi=re[q]*ci+im[q]*cr;re[q]=re[p]-vr;im[q]=im[p]-vi;re[p]+=vr;im[p]+=vi;const t=cr*wr-ci*wi;ci=cr*wi+ci*wr;cr=t}}}}
+function radial(A){let m=0;for(let i=0;i<N*N;i++)m+=A[i];m/=N*N;const re=new Float64Array(N*N),im=new Float64Array(N*N),h=x=>.5-.5*Math.cos(6.2832*(x+.5)/N);
+for(let y=0;y<N;y++)for(let x=0;x<N;x++)re[y*N+x]=(A[y*N+x]-m)*h(x)*h(y);
+const a=new Float64Array(N),b=new Float64Array(N);for(let y=0;y<N;y++){a.set(re.subarray(y*N,y*N+N));b.set(im.subarray(y*N,y*N+N));fft1(a,b);re.set(a,y*N);im.set(b,y*N)}
+for(let x=0;x<N;x++){for(let y=0;y<N;y++){a[y]=re[y*N+x];b[y]=im[y*N+x]}fft1(a,b);for(let y=0;y<N;y++){re[y*N+x]=a[y];im[y*N+x]=b[y]}}
+const s=new Float64Array(128),c=new Float64Array(128);for(let y=0;y<N;y++)for(let x=0;x<N;x++){const r=Math.round(Math.hypot(x<128?x:x-N,y<128?y:y-N));if(r<128){s[r]+=Math.hypot(re[y*N+x],im[y*N+x]);c[r]++}}
+return s.map((v,i)=>v/(c[i]||1))}
+const psnr=(a,b)=>{let e=0;for(let i=0;i<N*N;i++)e+=(a[i]-b[i])**2;return 10*Math.log10(1/Math.max(e/(N*N),1e-9))};
+function ssim(a,b){let t=0,q=0;for(let by=0;by<N;by+=8)for(let bx=0;bx<N;bx+=8){let ma=0,mb=0;for(let y=0;y<8;y++)for(let x=0;x<8;x++){ma+=a[(by+y)*N+bx+x];mb+=b[(by+y)*N+bx+x]}ma/=64;mb/=64;let va=0,vb=0,cv=0;
+for(let y=0;y<8;y++)for(let x=0;x<8;x++){const p=a[(by+y)*N+bx+x]-ma,r=b[(by+y)*N+bx+x]-mb;va+=p*p;vb+=r*r;cv+=p*r}va/=63;vb/=63;cv/=63;t+=(2*ma*mb+1e-4)*(2*cv+9e-4)/((ma*ma+mb*mb+1e-4)*(va+vb+9e-4));q++}return t/q}
+function effres(g,a){const q=i=>a[i]/(g[i]||1e-9);for(let f=4;f<126;f++){if((q(f-2)+q(f-1)+q(f)+q(f+1)+q(f+2))/5<.5)return f}return 127}
+function show(cv,A){const x=cv.getContext('2d'),d=x.createImageData(N,N);for(let i=0;i<N*N;i++){const v=LUT[Math.max(0,Math.min(1024,(A[i]*1024)|0))];d.data[4*i]=d.data[4*i+1]=d.data[4*i+2]=v;d.data[4*i+3]=255}x.putImageData(d,0,0)}
+let st={};
+function run(){const t0=performance.now(),P={};CT.forEach(c=>{P[c.id]=c.t==='s'?$(c.id).value:+$(c.id).value});const r=rng(P.seed|0);
+const G=scene(P.scene),sg=Math.hypot(.45*.55*P.fnum,P.lens)/UM,B=sg>.05?blur(G,sg):G,n=Math.floor(PATCH/P.pitch),s=N/n,nf=+P.frames,k=Math.round(Math.sqrt(nf));
+const fr=[],off=[];let sat=0,mean=0;
+for(let f=0;f<nf;f++){let ox=0,oy=0;if(f){if(P.shift==='grid'){ox=(f%k)/k;oy=Math.floor(f/k)/k}else if(P.shift==='random'){ox=r();oy=r()}}
+const c=capture(B,n,s,ox,oy,P,r);fr.push(c.o);off.push([ox,oy]);if(!f){sat=c.sat;mean=c.mean}}
+const nn=new Float32Array(N*N),nb=new Float32Array(N*N);for(let y=0;y<N;y++)for(let x=0;x<N;x++){nn[y*N+x]=fr[0][Math.min(n-1,y/s|0)*n+Math.min(n-1,x/s|0)];nb[y*N+x]=bil(fr[0],n,(x+.5)/s,(y+.5)/s)}
+const F=fuse(fr,off,n,s,r,P.align),out=new Float32Array(N*N);for(let i=0;i<N*N;i++)out[i]=F.V[i]+P.eff*(F.V[i]-nb[i]);
+show($('cg'),G);show($('cn'),nn);show($('cr'),out);st={nn,out};
+const pc=$('cp').getContext('2d'),pd=pc.createImageData(N,N),pal=[[196,188,171],[60,90,110],[31,154,124]];for(let i=0;i<N*N;i++){const c=pal[F.pv[i]];pd.data.set([c[0],c[1],c[2],255],4*i)}pc.putImageData(pd,0,0);
+const sG=radial(G),sN=radial(nb),sF=radial(out),eW=P.flux*.6*P.pitch**2,fw=1100*P.pitch**2,sig=mean*0+eW*B.reduce((a,b)=>a+b,0)/(N*N),snr=sig/Math.sqrt(sig+P.read**2);
+const nyq=500/P.pitch,dif=1000/(.55*P.fnum),mtf10=.343/sg/UM*1000/ (N/N)/ (2*Math.PI*0+1)/1000*1000/ 1,ff=36000*24000/P.pitch**2/1e6,optN=.343/(sg*UM)*1000;
+const rows=[['Native (bilinear)',nb,sN],['Reconstruction',out,sF]];
+$('mt').innerHTML='<tr><th></th><th>PSNR dB</th><th>SSIM</th><th>Eff. res lp/mm</th></tr>'+rows.map(([l,A,S])=>`<tr><td>${l}</td><td>${psnr(A,G).toFixed(1)}</td><td>${ssim(A,G).toFixed(3)}</td><td>${(effres(sG,S)/(PATCH/1000)/1000*1000).toFixed(0)}</td></tr>`).join('')+`<tr><td>Native Nyquist</td><td></td><td></td><td>${nyq.toFixed(0)}</td></tr>`;
+const mf=[...F.pv].filter(v=>v).length/(N*N)*100;
+$('rd').innerHTML=[['Photosites',`${n}×${n}`],['Full-frame equiv.',ff.toFixed(0)+' MP'],['Density',(1000/P.pitch).toFixed(0)+' px/mm'],['Nyquist',nyq.toFixed(0)+' lp/mm'],['Diffraction cutoff',dif.toFixed(0)+' lp/mm'],['Optics MTF10 (Gauss.)',optN.toFixed(0)+' lp/mm'],['Full well',(fw/1000).toFixed(1)+' ke⁻'],['Mean signal',(sig/1000).toFixed(2)+' ke⁻'],['Frame SNR',(20*Math.log10(snr)).toFixed(1)+' dB'],['Fused SNR (√N model)',(20*Math.log10(snr*Math.sqrt(nf))).toFixed(1)+' dB'],['Saturated',(sat*100).toFixed(2)+' %'],['FF raw at 12-bit',(ff*1.5).toFixed(0)+' MB'],['Cells directly measured',mf.toFixed(0)+' %']].map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join('');
+$('lim').innerHTML=optN<nyq?'<b>Optics-limited.</b> The lens passes less than the sensor can sample; extra density records more samples of blurred information.':'<b>Sampling-limited.</b> Optics deliver more than this sensor samples: aliasing is possible and denser sampling or sub-pixel frames can add real detail. Smaller pixels also hold fewer electrons (full well ∝ pitch²).';
+drawSp(sG,sN,sF,n/2,optN*(PATCH/1000));
+$('json').value=JSON.stringify({app:'PIXEL DENSITY LAB',version:'0.1.0-prototype',timestamp:new Date().toISOString(),seed:P.seed,scene:P.scene,
+sensor:{pitch_um:P.pitch,photosites:[n,n],fill_factor:1,qe:.6,full_well_e:Math.round(fw),read_noise_e:P.read,adc_bits:12,model:'Gaussian approximation of Poisson shot noise'},
+optics:{f_number:P.fnum,lens_sigma_um:P.lens,psf:'Gaussian; sigma=hypot(0.45*lambda*N, lens)',lambda_um:.55,exposure_e_per_um2:P.flux},
+capture:{frames:nf,micro_shift:P.shift,offsets_px:off.map(o=>o.map(v=>+v.toFixed(4)))},
+reconstruction:{method:'shift-and-add, nearest cell, box-normalised hole fill',registration_error_sigma_px:P.align,learned_reconstruction:'off (not implemented)'},
+effect:{name:'Temporal Residue',strength:P.eff,provenance:'measured differences only'},
+metrics:{psnr_native:+psnr(nb,G).toFixed(2),psnr_fused:+psnr(out,G).toFixed(2),ssim_native:+ssim(nb,G).toFixed(4),ssim_fused:+ssim(out,G).toFixed(4)}},null,1);
+$('tm').textContent=(performance.now()-t0).toFixed(0)+' ms'}
+function drawSp(g,a,f,nyq,opt){const cv=$('sp'),x=cv.getContext('2d'),W=cv.width,H=cv.height,cs=getComputedStyle(document.documentElement),ink=cs.getPropertyValue('--ink'),mu=cs.getPropertyValue('--mut'),ac=cs.getPropertyValue('--ac'),ln=cs.getPropertyValue('--ln');
+x.clearRect(0,0,W,H);const L=[g,a,f],db=v=>20*Math.log10(Math.max(v,1e-9)),mx=Math.max(...L.map(s=>Math.max(...s.slice(1).map(db)))),mn=mx-70,px=i=>40+i/127*(W-50),py=v=>10+(mx-Math.max(v,mn))/(mx-mn)*(H-40);
+x.fillStyle=ln;x.globalAlpha=.35;x.fillRect(px(nyq),10,W-10-px(nyq),H-40);x.globalAlpha=1;x.font='20px ui-sans-serif,system-ui';x.fillStyle=mu;x.fillText('beyond native Nyquist',px(nyq)+8,30);
+[[g,mu,[]],[a,ink,[8,6]],[f,ac,[]]].forEach(([s,c,d])=>{x.beginPath();x.setLineDash(d);x.strokeStyle=c;x.lineWidth=3;for(let i=1;i<128;i++){const v=(db(s[i])+db(s[i-1>0?i-1:1])+db(s[Math.min(127,i+1)]))/3;i>1?x.lineTo(px(i),py(v)):x.moveTo(px(i),py(v))}x.stroke()});x.setLineDash([]);
+if(opt<128){x.strokeStyle=ac;x.setLineDash([3,5]);x.beginPath();x.moveTo(px(opt),10);x.lineTo(px(opt),H-30);x.stroke();x.setLineDash([]);x.fillStyle=ac;x.fillText('optics MTF10',px(opt)+6,H-40)}
+x.fillStyle=mu;x.fillText('0',36,H-8);x.fillText('128 cyc/patch',W-150,H-8);x.fillText('ideal',50,H-64);x.fillStyle=ink;x.fillText('native',50,H-42);x.fillStyle=ac;x.fillText('fused',150,H-64)}
+const S=[['1 · Original scene','Coarse 16 µm sensor, one frame. The moiré rings inside the zone plate are aliasing: measured samples of frequencies the grid cannot represent, not extra detail.',{pitch:16,frames:'1',lens:0,fnum:4,align:0,eff:0,shift:'grid',scene:'zone'}],
+['2 · Denser sensor','4 µm pitch: 16× more photosites. Spectrum and PSNR improve until optics or noise intervene. Note the per-pixel SNR fall (full well ∝ pitch²).',{pitch:4,frames:'1',lens:0,fnum:4}],
+['3 · Optical limit','f/16 plus 4 µm lens blur: the dense sensor now records more samples of a blurred image. The optics line moves left of Nyquist and PSNR barely changes.',{pitch:4,frames:'1',lens:4,fnum:16}],
+['4 · Sub-pixel frames','8 µm sensor, four frames shifted by 0.5 px. Fusion places genuinely new samples (teal in the provenance map); the gain is bounded by the 8 µm pixel aperture.',{pitch:8,frames:'4',lens:.5,fnum:5.6,shift:'grid',align:0}],
+['5 · No shift, no gain','16 frames with 0.00 px shift: noise averages down (see fused SNR) but the spectrum does not extend. Repeated samples are not new spatial samples.',{pitch:8,frames:'16',shift:'zero',align:0}],
+['6 · Misalignment','Registration error 0.35 px: the fusion loses its resolution gain and adds artefacts. Compare the PSNR row with step 4.',{pitch:8,frames:'4',shift:'grid',align:.35}],
+['7 · Density-field effect','Temporal Residue at 0.6 re-displays fused-minus-native differences. It is measured-only and adds no information. Copy the experiment JSON below the images to keep the configuration.',{pitch:8,frames:'16',shift:'grid',align:0,eff:.6,lens:.5,fnum:5.6}]];
+S.forEach((s,i)=>{const b=document.createElement('button');b.textContent=s[0];b.onclick=()=>{[...$('steps').children].forEach(c=>c.classList.remove('on'));b.classList.add('on');$('sd').textContent=s[1];Object.entries(s[2]).forEach(([k,v])=>$(k).value=v);sync();run()};$('steps').append(b)});
+$('cr').onpointerdown=()=>st.nn&&show($('cr'),st.nn);['pointerup','pointerleave'].forEach(e=>$('cr').addEventListener(e,()=>st.out&&show($('cr'),st.out)));
+$('cpb').onclick=()=>{const t=$('json');t.select();try{navigator.clipboard.writeText(t.value)}catch(e){}};
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',run);
+sync();$('steps').children[3].click();
+</script></body></html>
