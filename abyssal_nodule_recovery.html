@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ABYSSAL — Nodule Recovery</title>
+<style>
+:root{--ink:#dcebf0;--muted:#8ba7b2;--panel:rgba(5,20,31,.88);--line:rgba(151,201,214,.2);--cyan:#66d8e8;--gold:#e8bd72;--red:#ff7777}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#04111d;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+canvas{display:block;width:100vw;height:100vh}
+#hud{position:fixed;inset:0;pointer-events:none;padding:18px;display:grid;grid-template-columns:minmax(230px,300px) 1fr minmax(230px,300px);grid-template-rows:auto 1fr auto;gap:12px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;backdrop-filter:blur(10px);box-shadow:0 12px 35px #0005;padding:13px 15px;pointer-events:auto}
+.brand{grid-column:1;grid-row:1}.brand .eyebrow,.eyebrow{font-size:10px;letter-spacing:.22em;color:var(--cyan);font-weight:800}.brand h1{font-size:22px;letter-spacing:.18em;margin:5px 0 2px}.brand p{margin:0;color:var(--muted);font-size:11px}
+.stats{grid-column:3;grid-row:1;display:grid;gap:8px;align-content:start}.statline{display:flex;justify-content:space-between;gap:12px;font-size:12px}.statline strong{font-variant-numeric:tabular-nums}
+.meter{height:7px;background:#183342;border-radius:8px;overflow:hidden;margin-top:5px}.meter>i{display:block;height:100%;width:50%;background:var(--cyan);transition:width .15s}.meter.danger>i{background:var(--red)}
+.leftmid{grid-column:1;grid-row:2;align-self:center;max-width:300px}.rightmid{grid-column:3;grid-row:2;align-self:center}.cargo-list{display:grid;gap:7px;margin-top:9px}.ore{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#c7dbe1}.ore span:last-child{color:var(--gold);font-variant-numeric:tabular-nums}.ore b{font-weight:650}
+.depth-big{font-size:31px;font-weight:750;letter-spacing:-.04em;margin:4px 0}.depth-caption{color:var(--muted);font-size:10px;letter-spacing:.15em}.objective{font-size:12px;line-height:1.5;color:#c6d9df;margin-top:8px}
+.bottom{grid-column:1/4;grid-row:3;display:flex;justify-content:space-between;align-items:end;gap:12px}.controls{font-size:11px;line-height:1.65;color:#c1d3d9}.controls kbd{background:#193544;border:1px solid #42606b;border-radius:4px;padding:2px 6px;color:white;font:inherit}
+button{background:#123646;color:#e4f7fb;border:1px solid #4c8b9a;padding:10px 14px;border-radius:7px;font-weight:700;cursor:pointer}button:hover{background:#1a5062}button:disabled{opacity:.4;cursor:not-allowed}
+#message{position:fixed;left:50%;top:20%;transform:translateX(-50%);text-align:center;max-width:min(560px,90vw);padding:12px 18px;background:#061722d9;border:1px solid #5ba7b6;border-radius:9px;font-size:13px;opacity:0;transition:opacity .25s;pointer-events:none}
+#overlay{position:fixed;inset:0;background:radial-gradient(ellipse at center,#0c3041dd,#020a12f2);display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{width:min(560px,100%);background:#071a27;border:1px solid #4c7c89;border-radius:14px;padding:28px;box-shadow:0 25px 100px #000a}.modal h2{font-size:27px;letter-spacing:.12em;margin:8px 0}.modal p{color:#a9c2ca;line-height:1.6;font-size:13px}.modal .small{font-size:11px;color:#7899a5}.modal-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+#toast{position:fixed;left:50%;bottom:105px;transform:translateX(-50%);background:#081d29;border:1px solid #5b9dab;border-radius:8px;padding:10px 16px;font-size:12px;opacity:0;transition:opacity .2s;pointer-events:none}
+@media(max-width:760px){#hud{padding:9px;grid-template-columns:1fr 1fr;grid-template-rows:auto auto 1fr auto}.brand{grid-column:1;grid-row:1}.stats{grid-column:2;grid-row:1}.leftmid{grid-column:1;grid-row:2;align-self:start}.rightmid{grid-column:2;grid-row:2;align-self:start}.bottom{grid-column:1/3;grid-row:4}.panel{padding:9px 10px}.brand h1{font-size:16px}.depth-big{font-size:23px}.hide-mobile{display:none}}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hud">
+  <section class="panel brand"><div class="eyebrow">ABYSSAL OCEAN SYSTEMS</div><h1>NODE RECOVERY</h1><p>DEEP-SEA MINERAL EXTRACTION · MISSION 01</p></section>
+  <section class="panel stats">
+    <div><div class="statline"><span>HULL INTEGRITY</span><strong id="hullText">100%</strong></div><div class="meter" id="hullMeter"><i id="hullBar"></i></div></div>
+    <div><div class="statline"><span>BATTERY</span><strong id="batteryText">100%</strong></div><div class="meter"><i id="batteryBar"></i></div></div>
+    <div class="statline"><span>RECOVERY CARGO</span><strong id="cargoText">0 / 12 kg</strong></div>
+    <div class="statline"><span>MISSION VALUE</span><strong id="valueText">£0</strong></div>
+  </section>
+  <section class="panel leftmid">
+    <div class="depth-caption">CURRENT DEPTH</div><div class="depth-big"><span id="depthText">0</span><small style="font-size:13px;color:#8ba7b2"> m</small></div>
+    <div class="statline"><span>SEA-FLOOR RANGE</span><strong id="floorText">—</strong></div>
+    <div class="objective" id="objective">Descend to locate polymetallic nodules. Larger, richer deposits form in the deepest trenches.</div>
+  </section>
+  <section class="panel rightmid">
+    <div class="eyebrow">RECOVERED MATERIALS</div><div class="cargo-list" id="cargoList"><div class="ore"><b>No samples aboard</b><span>—</span></div></div>
+    <div class="objective hide-mobile">Grade and purity determine sale value. Surface to transfer your cargo to the recovery vessel.</div>
+  </section>
+  <section class="bottom">
+    <div class="panel controls"><b>SUBMERSIBLE CONTROLS</b><br><kbd>W</kbd>/<kbd>↑</kbd> ascend &nbsp; <kbd>S</kbd>/<kbd>↓</kbd> descend &nbsp; <kbd>A</kbd>/<kbd>D</kbd> steer<br><kbd>SPACE</kbd> collect nearby nodule &nbsp; <kbd>SHIFT</kbd> propulsion boost</div>
+    <div class="panel" style="text-align:right"><div class="statline"><span>DEPTH ZONE</span><strong id="zoneText">SUNLIT</strong></div><div class="statline"><span>MARKET INDEX</span><strong>LIVE SIM · 1.00×</strong></div><button id="surfaceBtn" style="margin-top:9px">RETURN TO SURFACE ↑</button></div>
+  </section>
+</div>
+<div id="message"></div><div id="toast"></div>
+<div id="overlay">
+ <div class="modal">
+  <div class="eyebrow">ABYSSAL OCEAN SYSTEMS · FIELD OPERATIONS</div>
+  <h2>NODE RECOVERY</h2>
+  <p>Operate a deep-sea submersible across a descending ocean basin. Locate polymetallic nodules, inspect their metal composition and grade, then collect valuable samples before battery and hull limits force you to return.</p>
+  <p><b>Deeper water contains larger nodules and richer deposits</b> — but pressure, darkness and distance from the surface increase the risk. Your cargo only earns money once it is recovered at the surface.</p>
+  <p class="small">Game simulation: fictional resource grades, prices, depth and vehicle systems. Not real-world mineral survey or extraction data.</p>
+  <div class="modal-actions"><button id="startBtn">BEGIN DIVE</button><button id="howBtn">HOW TO PLAY</button></div>
+  <p id="howText" style="display:none">Steer with A/D, dive with S and rise with W. Approach a nodule and press SPACE to collect it. Cargo capacity is limited to 12 kg. Watch battery and hull integrity; deep pressure causes hull stress. Return to the surface to sell recovered cargo and upgrade your sub.</p>
+ </div>
+</div>
+<script>
+(()=>{
+'use strict';
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+const $=id=>document.getElementById(id);
+let W=innerWidth,H=innerHeight,dpr=Math.min(devicePixelRatio||1,2);
+function resize(){W=innerWidth;H=innerHeight;canvas.width=W*dpr;canvas.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0)}
+addEventListener('resize',resize);resize();
+const keys={};addEventListener('keydown',e=>{let k=e.key.toLowerCase();keys[k]=true;if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();if(k===' '&&game.running)collect()});
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+const metals=[
+ {name:'Manganese',sym:'Mn',color:'#9babb2',price:18,weight:.38},
+ {name:'Nickel',sym:'Ni',color:'#d7bd82',price:115,weight:.24},
+ {name:'Copper',sym:'Cu',color:'#d98a5c',price:92,weight:.20},
+ {name:'Cobalt',sym:'Co',color:'#7b9dd7',price:205,weight:.12},
+ {name:'Rare earths',sym:'REE',color:'#b58bd5',price:280,weight:.06}
+];
+let game={running:false,depth:0,x:0,velocity:0,dx:0,battery:100,hull:100,cargo:[],capacity:12,earned:0,bank:0,dives:0,upgrades:0,world:0,elapsed:0};
+let nodes=[],particles=[],bubbles=[],cameraY=0,last=0,toastTimer=0;
+const maxDepth=10500,seaFloor=10400;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),rand=(a,b)=>a+Math.random()*(b-a);
+function makeWorld(){
+ nodes=[];for(let i=0;i<175;i++){let depth=rand(450,seaFloor-150);let n=rand(.2,1);let size=(3+n*8)*(0.65+depth/maxDepth*1.5);let grade=clamp(rand(28,78)+depth/maxDepth*18,20,98);let purity=clamp(rand(42,82)+depth/maxDepth*12,30,99);let mix=metals.map(m=>({metal:m,amount:rand(.3,1.4)*m.weight}));let sum=mix.reduce((a,b)=>a+b.amount,0);mix.forEach(o=>o.amount=o.amount/sum);nodes.push({x:rand(-W*1.1,W*1.1),depth,size,grade,purity,mix,collected:false,phase:rand(0,6.28)})}
+}
+makeWorld();
+function fmt(n){return Math.round(n).toLocaleString('en-GB')}
+function showToast(t){$('toast').textContent=t;$('toast').style.opacity=1;toastTimer=2.1}
+function notify(t){$('message').textContent=t;$('message').style.opacity=1;setTimeout(()=>$('message').style.opacity=0,2500)}
+function cargoMass(){return game.cargo.reduce((a,n)=>a+n.mass,0)}
+function cargoValue(n){let base=n.mass*n.grade/100*n.purity/100;let metalFactor=n.mix.reduce((a,o)=>a+o.amount*o.metal.price,0);let depthBonus=1+n.depth/maxDepth*.42;return base*metalFactor*depthBonus*2.8}
+function totalCargoValue(){return game.cargo.reduce((a,n)=>a+n.value,0)}
+function collect(){
+ if(!game.running)return;
+ let nearest=null,dist=Infinity;
+ for(const n of nodes){if(n.collected)continue;let d=Math.hypot(n.x-game.x,(n.depth-game.depth)*.17);if(d<dist){dist=d;nearest=n}}
+ if(!nearest||dist>95){showToast('No nodule in collection range — move closer.');return}
+ if(cargoMass()+nearest.size>game.capacity){showToast('Cargo hold full. Return to the surface.');return}
+ nearest.collected=true;let sample={...nearest,mass:nearest.size,value:cargoValue(nearest)};
+ game.cargo.push(sample);showToast(`${sample.mix.sort((a,b)=>b.amount-a.amount)[0].metal.name}-rich nodule recovered · ${sample.grade.toFixed(0)} grade`);
+ updateHUD();
+}
+function surface(){
+ if(game.depth>0){game.depth=0;game.velocity=0;game.battery=Math.max(0,game.battery);if(game.cargo.length){let val=totalCargoValue();game.bank+=val;game.earned+=val;game.cargo=[];game.dives++;showToast(`Cargo transferred to recovery vessel · £${fmt(val)} credited`);$('objective').textContent=`Recovery complete. £${fmt(val)} added to your account. Prepare for another dive.`;makeWorld()}else showToast('Returned to surface. No cargo to sell.');updateHUD()}
+}
+$('surfaceBtn').onclick=()=>{if(game.depth>0){game.velocity=-Math.max(2,game.depth/160);notify('Emergency ascent initiated. Maintain hull integrity.')}};
+$('startBtn').onclick=()=>{$('overlay').style.display='none';game.running=true;last=performance.now();notify('Dive authorised. Search the basin for high-grade nodules.')};
+$('howBtn').onclick=()=>{$('howText').style.display=$('howText').style.display==='none'?'block':'none'};
+function updateHUD(){
+ $('depthText').textContent=fmt(game.depth);$('hullText').textContent=fmt(game.hull)+'%';$('batteryText').textContent=fmt(game.battery)+'%';
+ $('hullBar').style.width=game.hull+'%';$('batteryBar').style.width=game.battery+'%';$('hullMeter').classList.toggle('danger',game.hull<35);
+ $('cargoText').textContent=cargoMass().toFixed(1)+' / '+game.capacity+' kg';$('valueText').textContent='£'+fmt(totalCargoValue());
+ $('floorText').textContent=game.depth>seaFloor-250?'IN RANGE':fmt(seaFloor-game.depth)+' m';$('zoneText').textContent=game.depth<200?'SUNLIT':game.depth<1000?'TWILIGHT':game.depth<4000?'MIDNIGHT':'HADAL TRENCH';
+ $('cargoList').innerHTML=game.cargo.length?game.cargo.map(n=>`<div class="ore"><b>${n.mix.sort((a,b)=>b.amount-a.amount)[0].metal.sym} · ${n.grade.toFixed(0)}% grade</b><span>£${fmt(n.value)}</span></div>`).join(''):'<div class="ore"><b>No samples aboard</b><span>—</span></div>';
+}
+function drawBackground(){
+ let g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#3d9db3');g.addColorStop(.12,'#15516c');g.addColorStop(.38,'#082a42');g.addColorStop(.7,'#031a2c');g.addColorStop(1,'#010b17');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ // shafts of light
+ if(game.depth<1700){ctx.save();ctx.globalAlpha=Math.max(0,.12-game.depth/16000);for(let i=0;i<9;i++){let x=(i*W/7+game.elapsed*4)%W;ctx.fillStyle='#b9f4f4';ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x+90,H);ctx.lineTo(x+145,H);ctx.closePath();ctx.fill()}ctx.restore()}
+ // suspended marine particles
+ ctx.fillStyle='#9bc8d0';for(let p of particles){let y=(p.y-cameraY*.15)%H;if(y<0)y+=H;ctx.globalAlpha=p.a;ctx.fillRect(p.x,y,p.s,p.s)}ctx.globalAlpha=1;
+ // distant terrain contours
+ let floorY=H*.79+(seaFloor-game.depth)*.035;
+ ctx.beginPath();ctx.moveTo(0,floorY);
+ for(let x=0;x<=W;x+=25){let y=floorY+Math.sin(x*.008+1)*22+Math.sin(x*.019)*9;ctx.lineTo(x,y)}
+ ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.closePath();let fg=ctx.createLinearGradient(0,floorY,0,H);fg.addColorStop(0,'#243b3c');fg.addColorStop(1,'#101e25');ctx.fillStyle=fg;ctx.fill();
+ ctx.strokeStyle='#658078';ctx.globalAlpha=.4;ctx.lineWidth=2;ctx.stroke();ctx.globalAlpha=1;
+ // rocks and nodules on visible floor, parallax
+ for(let i=0;i<35;i++){let x=(i*137+Math.sin(i*9)*80)%W;let y=floorY+Math.sin(i*5)*16+20;ctx.fillStyle=i%3?'#304348':'#455354';ctx.beginPath();ctx.ellipse(x,y,randStatic(i,8,22),randStatic(i+2,5,12),0,0,Math.PI*2);ctx.fill()}
+}
+function randStatic(i,a,b){return a+((Math.sin(i*78.233)*43758.5453)%1+1)%1*(b-a)}
+function worldToScreen(n){let y=H*.48+(n.depth-game.depth)*.095;return {x:W/2+(n.x-game.x),y}}
+function drawNodes(){
+ for(let n of nodes){if(n.collected)continue;let p=worldToScreen(n);if(p.y<H*.72||p.y>H+40)continue;let scale=clamp(1+(n.depth/maxDepth)*.65,.8,1.7);ctx.save();ctx.translate(p.x,p.y);ctx.scale(scale,scale);
+ let grad=ctx.createRadialGradient(-3,-4,1,0,0,n.size*1.5);grad.addColorStop(0,'#c1c2b0');grad.addColorStop(.45,'#697878');grad.addColorStop(1,'#283b3e');ctx.fillStyle=grad;ctx.strokeStyle='#a7b4a7';ctx.lineWidth=1;ctx.beginPath();ctx.ellipse(0,0,n.size*1.35,n.size*.85,Math.sin(n.phase),0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle='#e8d9a8';ctx.globalAlpha=.45;ctx.fillRect(-n.size*.5,-2,3,2);ctx.restore()}
+}
+function drawSub(){
+ let x=W*.5+game.x*.12,y=H*.47;
+ ctx.save();ctx.translate(x,y);ctx.rotate(game.dx*.018);
+ // headlight beam
+ let beam=ctx.createRadialGradient(45,0,5,120,0,210);beam.addColorStop(0,'#c9f7ef33');beam.addColorStop(1,'#b7f7e900');ctx.fillStyle=beam;ctx.beginPath();ctx.moveTo(20,-15);ctx.lineTo(245,-105);ctx.lineTo(245,105);ctx.lineTo(20,15);ctx.fill();
+ // prop wash
+ ctx.fillStyle='#9edce044';ctx.beginPath();ctx.ellipse(-62,0,randStatic(2,16,26),8,0,0,Math.PI*2);ctx.fill();
+ // hull
+ let metal=ctx.createLinearGradient(0,-26,0,26);metal.addColorStop(0,'#d8e2df');metal.addColorStop(.45,'#758f96');metal.addColorStop(1,'#263d49');
+ ctx.fillStyle=metal;ctx.strokeStyle='#d8e5e3';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(-58,0);ctx.quadraticCurveTo(-40,-24,4,-24);ctx.lineTo(44,-16);ctx.quadraticCurveTo(62,0,44,16);ctx.lineTo(4,24);ctx.quadraticCurveTo(-40,24,-58,0);ctx.fill();ctx.stroke();
+ ctx.fillStyle='#244e60';ctx.beginPath();ctx.ellipse(10,-2,18,12,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#9ce4e9';ctx.stroke();
+ ctx.fillStyle='#d6b36f';ctx.fillRect(-18,-28,7,8);ctx.fillRect(-18,20,7,8);
+ ctx.fillStyle='#8faab0';ctx.fillRect(-66,-7,12,14);ctx.fillStyle='#c5d4d2';ctx.fillRect(-75,-4,9,8);
+ ctx.fillStyle='#b5c6c5';ctx.fillRect(-5,-31,7,9);ctx.fillRect(-5,22,7,9);
+ ctx.restore();
+}
+function drawHUDWorld(){
+ // depth scale
+ ctx.save();ctx.fillStyle='#c3d8df';ctx.globalAlpha=.65;ctx.font='10px system-ui';ctx.fillText('0 m',18, H*.2);ctx.fillText('2,000 m',18,H*.38);ctx.fillText('4,000 m',18,H*.55);ctx.fillText('6,000 m',18,H*.72);ctx.fillText('10,000 m',18,H*.9);ctx.strokeStyle='#a9d5dd';ctx.globalAlpha=.25;ctx.beginPath();ctx.moveTo(70,H*.18);ctx.lineTo(70,H*.9);ctx.stroke();let marker=H*.2+game.depth/maxDepth*H*.7;ctx.fillStyle='#e8bd72';ctx.fillRect(65,marker,10,2);ctx.restore();
+}
+function tick(t){
+ if(!game.running){requestAnimationFrame(tick);return}
+ let dt=Math.min((t-last)/1000,.04);last=t;game.elapsed+=dt;
+ let up=keys.w||keys.arrowup,down=keys.s||keys.arrowdown,left=keys.a||keys.arrowleft,right=keys.d||keys.arrowright,boost=keys.shift;
+ let accel=(down?1:0)-(up?1:0);let thrust=boost?1.65:1;
+ game.velocity+=accel*95*dt*thrust;game.velocity*=Math.pow(.94,dt*60);game.velocity=clamp(game.velocity,-165,165);
+ game.depth=clamp(game.depth+game.velocity*dt,0,maxDepth);
+ game.dx+=(right?1:0)-(left?1:0);game.dx*=Math.pow(.9,dt*60);game.x=clamp(game.x+game.dx*115*dt,-W*1.3,W*1.3);
+ let drain=.12+Math.abs(game.velocity)*.0011+(boost?.38:0);game.battery=Math.max(0,game.battery-drain*dt);
+ let pressure=Math.max(0,game.depth-5000)/maxDepth;game.hull=Math.max(0,game.hull-pressure*.48*dt-(game.depth>=maxDepth?1.5*dt:0));
+ if(game.depth===maxDepth){game.velocity=-50;notify('Maximum operating depth reached. Ascend immediately.')}
+ if(game.battery<=0||game.hull<=0){game.velocity=-65;notify('Critical systems. Emergency ascent engaged.')}
+ if(game.depth===0&&game.cargo.length)surface();
+ if(game.battery===0&&game.depth===0){game.battery=45;game.hull=Math.max(25,game.hull);showToast('Surface support crew restored emergency power.')}
+ if(game.hull===0&&game.depth===0){game.hull=65}
+ if(game.elapsed%0.25<dt)updateHUD();
+ // particle movement
+ for(let p of particles){p.y+=p.v*dt;if(p.y>H)p.y=0}
+ if(toastTimer>0){toastTimer-=dt;if(toastTimer<=0)$('toast').style.opacity=0}
+ render();requestAnimationFrame(tick);
+}
+function render(){
+ ctx.clearRect(0,0,W,H);drawBackground();drawNodes();drawSub();drawHUDWorld();
+ // proximity reticle
+ let near=nodes.filter(n=>!n.collected).map(n=>({n,p:worldToScreen(n)})).filter(o=>Math.hypot(o.p.x-W/2,o.p.y-H*.47)<115).sort((a,b)=>Math.hypot(a.p.x-W/2,a.p.y-H*.47)-Math.hypot(b.p.x-W/2,b.p.y-H*.47))[0];
+ if(near){ctx.strokeStyle='#e8bd72';ctx.setLineDash([4,4]);ctx.beginPath();ctx.arc(near.p.x,near.p.y,near.n.size+12,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#f3d69c';ctx.font='11px system-ui';ctx.fillText(`${near.n.grade.toFixed(0)}% GRADE · ${near.n.size.toFixed(1)} KG`,near.p.x+18,near.p.y-15)}
+}
+for(let i=0;i<180;i++)particles.push({x:Math.random()*W,y:Math.random()*H,v:rand(.5,8),s:rand(.5,2),a:rand(.08,.35)});
+$('surfaceBtn').addEventListener('click',()=>{});
+updateHUD();requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
